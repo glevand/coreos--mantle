@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime/debug"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -114,56 +113,6 @@ func RebootMachine(m Machine, j *Journal) error {
 }
 
 // StartMachine will start a given machine, provided the machine's journal.
-func machineChecksPrint(header string, cmd string, stdout []byte, stderr []byte, err error) {
-	fmt.Printf("## %s:\n# cmd\n%v\n\n# err\n%v\n\n# stdout\n%v\n\n# stderr\n%v\n\n",
-		   header, cmd, err, string(stdout), string(stderr))
-}
-
-func machineChecks(m Machine) {
-	var cmd string
-	var stdout []byte
-	var stderr []byte
-	var err error
-
-	if false {debug.PrintStack()}
-
-	cmd = "lsblk --json"
-	stdout, stderr, err = m.SSH(cmd)
-	machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	cmd = `getenforce`
-	stdout, stderr, err = m.SSH(cmd)
-	machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	cmd = `sestatus`
-	stdout, stderr, err = m.SSH(cmd)
-	machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	//cmd = `sudo mount`
-	//stdout, stderr, err = m.SSH(cmd)
-	//machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	cmd = `sudo ls -lZ /etc`
-	stdout, stderr, err = m.SSH(cmd)
-	machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	//cmd = "systemctl status"
-	//stdout, stderr, err = m.SSH(cmd)
-	//machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	//cmd = `type -P setenforce`
-	//stdout, stderr, err = m.SSH(cmd)
-	//machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	cmd = `sudo setenforce 1`
-	stdout, stderr, err = m.SSH(cmd)
-	machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-
-	cmd = `sestatus`
-	stdout, stderr, err = m.SSH(cmd)
-	machineChecksPrint("machineChecks", cmd, stdout, stderr, err)
-}
-
 func StartMachine(m Machine, j *Journal) error {
 	if err := j.Start(context.TODO(), m); err != nil {
 		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
@@ -171,7 +120,6 @@ func StartMachine(m Machine, j *Journal) error {
 	if err := CheckMachine(context.TODO(), m); err != nil {
 		return fmt.Errorf("machine %q failed basic checks: %v", m.ID(), err)
 	}
-	machineChecks(m)
 	if !m.RuntimeConf().NoEnableSelinux {
 		if err := EnableSelinux(m); err != nil {
 			return fmt.Errorf("machine %q failed to enable selinux: %v", m.ID(), err)

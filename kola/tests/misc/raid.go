@@ -16,6 +16,7 @@ package misc
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -102,6 +103,51 @@ systemd:
 	})
 }
 
+func checksPrint(header string, cmd string, stdout []byte, stderr []byte, err error) {
+	fmt.Printf("## %s:\n# cmd\n%v\n\n# err\n%v\n\n# stdout\n%v\n\n# stderr\n%v\n\n",
+		header, cmd, err, string(stdout), string(stderr))
+}
+
+func selinuxChecks(m platform.Machine) {
+	var cmd string
+	var stdout []byte
+	var stderr []byte
+	var err error
+	fname := "RootOnRaid"
+
+	cmd = "mount"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+
+	cmd = `sestatus`
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+
+	cmd = "getenforce"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+
+	cmd = "id; pwd"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+
+	cmd = "cat /proc/self/status"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+
+	cmd = "ls -lZ /"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+
+	cmd = "ls -lZ /root"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname+" (should fail, Permission denied)", cmd, stdout, stderr, err)
+
+	cmd = "sudo ls -lZ /root"
+	stdout, stderr, err = m.SSH(cmd)
+	checksPrint(fname, cmd, stdout, stderr, err)
+}
+
 func RootOnRaid(c cluster.TestCluster) {
 	options := qemu.MachineOptions{
 		AdditionalDisks: []qemu.Disk{
@@ -112,6 +158,8 @@ func RootOnRaid(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatal(err)
 	}
+
+	selinuxChecks(m)
 
 	checkIfMountpointIsRaid(c, m, "/")
 

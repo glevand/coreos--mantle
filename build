@@ -16,7 +16,8 @@ version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 
 host_build() {
-	echo "Building $1"
+	local cmd="$(basename "${1}")"
+	echo "Building host ${cmd}"
 
 	if [[ "${GOHOSTARCH}" == "${GOARCH}" ]]; then
 		install_dir="bin"
@@ -24,26 +25,38 @@ host_build() {
 		install_dir="bin/${GOARCH}"
 	fi
 	mkdir -p "${install_dir}"
-	go build -ldflags "${ldflags}" -o "${install_dir}/$1" "${REPO_PATH}/cmd/$1"
+	go build -ldflags "${ldflags}" -o "${install_dir}/${cmd}" "${REPO_PATH}/cmd/${cmd}"
 }
 
 cross_build() {
+	local arch=${1}
+	local cmd=${2}
+
 	[[ -z "${NO_CROSS}" ]] || return 0
-	local a
-	for a in amd64 arm64; do
-		echo "Building $a/$1"
-		mkdir -p "bin/$a"
-		CGO_ENABLED=0 GOARCH=$a \
-			go build -ldflags "${ldflags}" \
-			-o "bin/$a/$1" "${REPO_PATH}/cmd/$1"
-	done
+
+	echo "Building cross ${arch}/${cmd}"
+
+	mkdir -p "bin/${arch}"
+	CGO_ENABLED=0 GOARCH=${arch} \
+		go build -ldflags "${ldflags}" \
+		-o "bin/${arch}/${cmd}" "${REPO_PATH}/cmd/${cmd}"
 }
 
 for cmd in "$@"; do
-	cmd=$(basename "${cmd}")
-	if [[ "${cmd}" == kolet ]]; then
-		cross_build kolet
-	else
+	cmd=${cmd##cmd/}
+	case "${cmd}" in
+	amd64/kolet )
+		cross_build amd64 kolet
+		;;
+	arm64/kolet )
+		cross_build arm64 kolet
+		;;
+	*kolet )
+		cross_build amd64 kolet
+		cross_build arm64 kolet
+		;;
+	* )
 		host_build "${cmd}"
-	fi
+		;;
+	esac
 done

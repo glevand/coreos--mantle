@@ -377,6 +377,25 @@ func dockerOldClient(c cluster.TestCluster) {
 	}
 }
 
+func dockerChecksUserns(c cluster.TestCluster, m platform.Machine) {
+	var cmd string
+	var stdout []byte
+	var stderr []byte
+	var err error
+
+	cmd = `id; id dockremap; ls -la /proc/self/ns; cat /etc/subuid; sudo setenforce 0; sudo docker run userns-test id`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUserns", cmd, stdout, stderr, err)
+
+	cmd = `sudo setenforce 0; sudo docker run userns-test id`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUserns", cmd, stdout, stderr, err)
+
+	cmd = `id; id dockremap; cat /etc/subuid; sudo setenforce 1; sudo docker run userns-test id`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUserns", cmd, stdout, stderr, err)
+}
+
 // Regression test for userns breakage under 1.12
 func dockerUserns(c cluster.TestCluster) {
 	m := c.Machines()[0]
@@ -431,6 +450,106 @@ func dockerNetworksReliably(c cluster.TestCluster) {
 
 }
 
+func dockerChecksPrint(header string, cmd string, stdout []byte, stderr []byte, err error) {
+	fmt.Printf("## %s:\n# cmd\n%v\n\n# err\n%v\n\n# stdout\n%v\n\n# stderr\n%v\n\n",
+		   header, cmd, err, string(stdout), string(stderr))
+}
+
+func dockerChecksUser(c cluster.TestCluster, m platform.Machine) {
+	var cmd string
+	var stdout []byte
+	var stderr []byte
+	var err error
+
+	cmd = `sudo setenforce 0; getenforce; sudo docker run -v /root:/root --user 1000:1000 captest sh -c \
+		'id; ls -lZ /; ls -lZ /root'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `sudo setenforce 1; getenforce; sudo docker run -v /root:/root --user 1000:1000 captest sh -c \
+		'id; ls -lZ /; ls -lZ /root'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	return
+// qemu host ---
+
+	cmd = "getenforce"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = "id; pwd"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = "cat /proc/self/status"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = "ls -lZ /"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = "ls -lZ /root"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+// docker -----
+//as core
+	cmd = `docker run captest sh -c \
+		'pwd; id; ls -lZ /'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `docker run captest sh -c \
+		'ls -lZ /root'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `docker run captest sh -c \
+		'cat /proc/self/status'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+// --user 1000:1000
+	cmd = `docker run --user 1000:1000 captest sh -c \
+		'pwd; id; ls -lZ /'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `docker run --user 1000:1000 captest sh -c \
+		'ls -lZ /root'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `docker run --user 1000:1000 captest sh -c \
+		'cat /proc/self/status'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+// -v /root:/root
+	cmd = `docker run -v /root:/root captest sh -c \
+		'pwd; id; ls -lZ /'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `docker run -v /root:/root captest sh -c \
+		'ls -lZ /root'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+	cmd = `docker run -v /root:/root captest sh -c \
+		'cat /proc/self/status'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+
+// -v /root:/root --user 1000:1000
+	cmd = `docker run -v /root:/root --user 1000:1000 captest sh -c \
+		'pwd; id; ls -lZ /'`
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksUser", cmd, stdout, stderr, err)
+}
+
 // Regression test for CVE-2016-8867
 // CVE-2016-8867 gave a container capabilities, including fowner, even if it
 // was a non-root user.
@@ -442,6 +561,8 @@ func dockerUserNoCaps(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	genDockerContainer(c, m, "captest", []string{"capsh", "sh", "grep", "cat", "ls"})
+
+	dockerChecksUser(c, m)
 
 	// With the current SELinux policy the docker daemon does not have
 	// access to the '/root' directory.  Set SELinux to permisive mode
@@ -562,7 +683,41 @@ func testContainerdUp(c cluster.TestCluster) {
 	}
 }
 
+func dockerChecksInfo(c cluster.TestCluster, m platform.Machine) {
+	var cmd string
+	var stdout []byte
+	var stderr []byte
+	var err error
+
+	cmd = "getenforce"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksInfo", cmd, stdout, stderr, err)
+
+	cmd = "sestatus"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksInfo", cmd, stdout, stderr, err)
+
+	cmd = "ls -l /var/run/docker.sock"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksInfo", cmd, stdout, stderr, err)
+
+	cmd = "curl -sS --trace - --unix-socket /var/run/docker.sock http://docker/v1.24/info"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksInfo", cmd, stdout, stderr, err)
+
+	cmd = "systemctl status"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksInfo", cmd, stdout, stderr, err)
+
+	cmd = "/usr/bin/docker --debug info"
+	stdout, stderr, err = m.SSH(cmd)
+	dockerChecksPrint("dockerChecksInfo", cmd, stdout, stderr, err)
+}
+
 func getDockerInfo(c cluster.TestCluster, m platform.Machine) (simplifiedDockerInfo, error) {
+
+	dockerChecksInfo(c, m)
+
 	dockerInfoJson, err := c.SSH(m, `curl -s --unix-socket /var/run/docker.sock http://docker/v1.24/info`)
 	if err != nil {
 		return simplifiedDockerInfo{}, fmt.Errorf("could not get dockerinfo: %v", err)

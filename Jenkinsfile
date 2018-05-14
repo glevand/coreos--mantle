@@ -1,7 +1,7 @@
 #!groovy
 
 properties([
-    buildDiscarder(logRotator(daysToKeepStr: '20', numToKeepStr: '30')),
+    buildDiscarder(logRotator(daysToKeepStr: '30', numToKeepStr: '5')),
 
     [$class: 'CopyArtifactPermissionProperty',
      projectNames: '*'],

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+sudo true
+
+go env 2>/dev/null >/dev/null || source ~/.gimme/envs/go1.8.3.env
+
+cd ${dir}
+sudo rm -rf _kola_temp
+rm -rf $(git ls-files -o | egrep --invert-match '^,,')
+
+#./build
+#./test -v

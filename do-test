@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+: ${GO_VER:="1.9.1"}
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+go env 2>/dev/null >/dev/null || source ~/.gimme/envs/go${GO_VER}.env
+
+cd ${dir}
+
+./build
+./test -v

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+go env 2>/dev/null >/dev/null || source ~/.gimme/envs/go1.8.3.env
+
+cd ${dir}
+
+./build
+#./test -v

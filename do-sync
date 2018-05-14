@@ -1,0 +1,22 @@
+#!/bin/bash
+
+: ${REMOTE:="geoff@t88"}
+: ${PROJECT:="mantle"}
+
+if [[ ${1} ]]; then
+	REMOTE="${1}"
+fi
+
+if [[ -n ${DRY_RUN} ]]; then
+	DRY_RUN="--dry-run"
+fi
+
+echo "remote: ${REMOTE}"
+
+rsync -av ${DRY_RUN} --delete \
+	--exclude=',,*' \
+	--exclude='/.cache' \
+	--exclude='_kola_temp' \
+	--exclude='/bin' \
+	--exclude='/gopath' \
+	{,${REMOTE}:}/home/geoff/projects/coreos/dev-1/src/third_party/${PROJECT}/

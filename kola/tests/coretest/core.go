@@ -31,17 +31,17 @@ func init() {
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]func() error{
-			//"CloudConfig":      TestCloudinitCloudConfig,
-			//"Script":           TestCloudinitScript,
-			//"PortSSH":          TestPortSsh,
+			"CloudConfig":      TestCloudinitCloudConfig,
+			"Script":           TestCloudinitScript,
+			"PortSSH":          TestPortSsh,
 			"DbusPerms":        TestDbusPerms,
-			//"Symlink":          TestSymlinkResolvConf,
-			//"UpdateEngineKeys": TestInstalledUpdateEngineRsaKeys,
-			//"ServicesActive":   TestServicesActive,
-			//"ReadOnly":         TestReadOnlyFs,
-			//"RandomUUID":       TestFsRandomUUID,
-			//"Useradd":          TestUseradd,
-			//"MachineID":        TestMachineID,
+			"Symlink":          TestSymlinkResolvConf,
+			"UpdateEngineKeys": TestInstalledUpdateEngineRsaKeys,
+			"ServicesActive":   TestServicesActive,
+			"ReadOnly":         TestReadOnlyFs,
+			"RandomUUID":       TestFsRandomUUID,
+			"Useradd":          TestUseradd,
+			"MachineID":        TestMachineID,
 		},
 	})
 	register.Register(&register.Test{
@@ -187,61 +187,6 @@ func TestNTPDate() error {
 		}
 		return nil
 	}
-}
-
-func checksPrint(header string, cmd *exec.Cmd, out []byte, err error) {
-	fmt.Printf("## %s:\n# cmd\n%v\n\n# err\n%v\n\n# out\n%v\n\n",
-		   header, cmd.Args, err, string(out))
-}
-
-func dbusChecks() {
-	var c *exec.Cmd
-	var out []byte
-	var err error
-
-//	c = exec.Command(
-//		"sudo", "-u", "core",
-//		"gdbus", "introspect", "--system",
-//		"--dest", "org.freedesktop.systemd1",
-//		"--object-patests/docker: Disable selinux for th", "/org/freedesktop/systemd1",
-//	)
-//	out, err = c.CombinedOutput()
-//	checksPrint("dbusChecks", c, out, err)
-
-	c = exec.Command(
-		"sudo", "setenforce", "0",
-	)
-	out, err = c.CombinedOutput()
-	checksPrint("dbusChecks", c, out, err)
-
-	c = exec.Command(
-		"sudo", "-u", "core",
-		"gdbus", "call", "--system",
-		"--dest", "org.freedesktop.systemd1",
-		"--object-path", "/org/freedesktop/systemd1",
-		"--method", "org.freedesktop.systemd1.Manager.RestartUnit",
-		"ntpd.service", "replace",
-	)
-	out, err = c.CombinedOutput()
-	checksPrint("dbusChecks", c, out, err)
-
-
-	c = exec.Command(
-		"sudo", "setenforce", "1",
-	)
-	out, err = c.CombinedOutput()
-	checksPrint("dbusChecks", c, out, err)
-
-	c = exec.Command(
-		"sudo", "-u", "core",
-		"gdbus", "call", "--system",
-		"--dest", "org.freedesktop.systemd1",
-		"--object-path", "/org/freedesktop/systemd1",
-		"--method", "org.freedesktop.systemd1.Manager.RestartUnit",
-		"ntpd.service", "replace",
-	)
-	out, err = c.CombinedOutput()
-	checksPrint("dbusChecks", c, out, err)
 }
 
 // This execs gdbus, because we need to change uses to test perms.
